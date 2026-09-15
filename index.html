@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Estudos - Concurso Caxias (MA)</title>
+    
+    <!-- Suporte a LaTeX via KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+    <header>
+        <h1>Foco Caxias (MA) | Professor de Matemática</h1>
+        <p>Acompanhamento Estratégico do Edital • Meta Diária: 3 Horas 🎯</p>
+        
+        <!-- PAINEL DE AUTENTICAÇÃO DO GOOGLE -->
+        <div class="container-auth">
+            <div id="user-logged-out">
+                <button onclick="fazerLoginGoogle()" class="btn-auth btn-google">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Entrar com o Gmail (Sincronizar)
+                </button>
+            </div>
+            <div id="user-logged-in" style="display: none;">
+                <img id="user-photo" src="" alt="Foto" class="user-avatar">
+                <span id="user-name"></span>
+                <button onclick="fazerLogout()" class="btn-auth btn-logout">Sair</button>
+            </div>
+        </div>
+
+        <div class="container-backup">
+            <button onclick="exportarDados()" class="btn-backup btn-save">💾 Salvar Backup Local</button>
+            <button onclick="document.getElementById('input-importar').click()" class="btn-backup btn-load">📂 Carregar Backup</button>
+            <input type="file" id="input-importar" style="display: none;" accept=".json" onchange="importarDados(event)">
+        </div>
+
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="switchTab('cronograma')">📅 Diário & Cronograma</button>
+            <button class="tab-btn" onclick="switchTab('caderno-erros')">📓 Caderno de Erros por Disciplina</button>
+            <button class="tab-btn" onclick="switchTab('mapas-mentais')">📝 Resumos & Anotações</button>
+            <button class="tab-btn" onclick="switchTab('pdfs-leitura')">📚 PDFs do Edital & Leitura</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- ABA 1: CRONOGRAMA & DIÁRIO -->
+        <section id="cronograma" class="tab-content active-content">
+            <div class="controle-cronograma">
+                <h2>Acompanhamento Diário até a Prova</h2>
+                <div class="seletor-semana">
+                    <label for="select-data"><strong>Selecione o Dia de Estudo:</strong></label>
+                    <select id="select-data" onchange="mudarDataReal()"></select>
+                </div>
+            </div>
+
+            <div class="fase-alerta" id="fase-diretriz"></div>
+
+            <div class="grid-layout">
+                <div class="card-estudos">
+                    <h3>📚 Cronograma Sugerido para o Dia</h3>
+                    <div id="materias-do-dia"></div>
+                    
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border);">
+                    <h3>📊 Registrar Desempenho em Questões</h3>
+                    <form id="form-questoes-dia" class="estilo-form" onsubmit="salvarQuestoesDia(event)">
+                        <label for="qst-disciplina"><strong>Disciplina:</strong></label>
+                        <select id="qst-disciplina" required>
+                            <option value="Matemática">📐 Matemática (Específica)</option>
+                            <option value="Língua Portuguesa">✍️ Língua Portuguesa</option>
+                            <option value="Noções de Informática">💻 Noções de Informática</option>
+                            <option value="Conhecimentos Locais">🏛️ Conhecimentos Locais (Caxias-MA)</option>
+                        </select>
+                        
+                        <input type="text" id="qst-conteudo" placeholder="Assunto (Ex: Geometria Plana - Áreas)" required>
+                        
+                        <div class="grid-2-col">
+                            <div>
+                                <label><strong>Acertos:</strong></label>
+                                <input type="number" id="qst-acertos" min="0" placeholder="0" required>
+                            </div>
+                            <div>
+                                <label><strong>Erros:</strong></label>
+                                <input type="number" id="qst-erros" min="0" placeholder="0" required>
+                            </div>
+                        </div>
+                        <button type="submit" style="background-color: var(--success);">Computar Questões</button>
+                    </form>
+                    
+                    <div id="lista-questoes-do-dia" style="margin-top: 15px;"></div>
+                </div>
+
+                <div class="card-estudos">
+                    <h3>✍️ Diário de Execução Realizada</h3>
+                    <form id="form-registro-dia" class="estilo-form">
+                        <label><strong>Horas Dedicadas Hoje:</strong></label>
+                        <input type="number" id="registro-horas" step="0.1" min="0" max="24" placeholder="Ex: 3.5" required>
+                        
+                        <label><strong>Resumo do que foi estudado:</strong></label>
+                        <textarea id="registro-texto" placeholder="Detalhamento das metas batidas, páginas lidas..." required></textarea>
+                        
+                        <button type="submit">Gravar Registro</button>
+                    </form>
+                    
+                    <div id="status-dia-salvo" style="margin-top: 15px; padding: 15px; border-radius: 6px; display: none;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABA 2: CADERNO DE ERROS POR DISCIPLINA -->
+        <section id="caderno-erros" class="tab-content">
+            <h2>📓 Caderno de Erros por Disciplina</h2>
+            <p style="margin-bottom: 20px; color: #555;">Anote pegadinhas e explicações. Suporta <strong>LaTeX</strong> (Ex: use <code>$f(x) = x^2$</code> ou <code>$$\frac{a}{b}$$</code>).</p>
+
+            <form id="form-erro" class="estilo-form" style="margin-bottom: 30px;">
+                <label for="erro-disciplina"><strong>Disciplina:</strong></label>
+                <select id="erro-disciplina" required>
+                    <option value="Matemática">📐 Matemática (Específica)</option>
+                    <option value="Língua Portuguesa">✍️ Língua Portuguesa</option>
+                    <option value="Noções de Informática">💻 Noções de Informática</option>
+                    <option value="Conhecimentos Locais">🏛️ Conhecimentos Locais (Caxias-MA)</option>
+                </select>
+
+                <input type="text" id="erro-enunciado" placeholder="Tópico / Assunto / Enunciado Resumido" required>
+                <textarea id="erro-motivo" placeholder="Explicação detalhada do erro... Use $f(x)$ para fórmulas no texto!" required></textarea>
+                <button type="submit">Catalogar Erro</button>
+            </form>
+
+            <div id="categorias-erros">
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #0288d1;">
+                        <h3>📐 Matemática (Específica)</h3>
+                    </div>
+                    <div id="estatistica-Matemática" class="estatistica-painel"></div>
+                    <div id="lista-erros-Matemática" class="lista-itens"></div>
+                </div>
+
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #3a86c8;">
+                        <h3>✍️ Língua Portuguesa</h3>
+                    </div>
+                    <div id="estatistica-Língua Portuguesa" class="estatistica-painel"></div>
+                    <div id="lista-erros-Língua Portuguesa" class="lista-itens"></div>
+                </div>
+
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #24a0ed;">
+                        <h3>💻 Noções de Informática</h3>
+                    </div>
+                    <div id="estatistica-Noções de Informática" class="estatistica-painel"></div>
+                    <div id="lista-erros-Noções de Informática" class="lista-itens"></div>
+                </div>
+
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #e63946;">
+                        <h3>🏛️ Conhecimentos Locais (Caxias-MA)</h3>
+                    </div>
+                    <div id="estatistica-Conhecimentos Locais" class="estatistica-painel"></div>
+                    <div id="lista-erros-Conhecimentos Locais" class="lista-itens"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABA 3: RESUMOS E MAPAS MENTAIS -->
+        <section id="mapas-mentais" class="tab-content">
+            <h2>📝 Resumos & Anotações Teóricas</h2>
+            <p style="margin-bottom: 15px; color: #555;">Crie anotações com suporte total a **LaTeX** usando <code>$ ... $</code> para inline e <code>$$ ... $$</code> para blocos.</p>
+            
+            <form id="form-mapa" class="estilo-form" style="margin-bottom: 30px;">
+                <div class="grid-2-col">
+                    <div>
+                        <label for="mapa-disciplina"><strong>Vincular à Disciplina:</strong></label>
+                        <select id="mapa-disciplina" required>
+                            <option value="Matemática">📐 Matemática (Específica)</option>
+                            <option value="Língua Portuguesa">✍️ Língua Portuguesa</option>
+                            <option value="Noções de Informática">💻 Noções de Informática</option>
+                            <option value="Conhecimentos Locais">🏛️ Conhecimentos Locais (Caxias-MA)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="mapa-titulo"><strong>Título do Resumo:</strong></label>
+                        <input type="text" id="mapa-titulo" placeholder="Ex: Equação do 2º Grau e Bhaskara" required>
+                    </div>
+                </div>
+
+                <div class="editor-toolbar">
+                    <div class="toolbar-group">
+                        <label>Tamanho da Fonte:</label>
+                        <select id="editor-font-size">
+                            <option value="14px">Pequeno</option>
+                            <option value="16px" selected>Médio</option>
+                            <option value="20px">Grande</option>
+                        </select>
+                    </div>
+                    <div class="toolbar-group">
+                        <label>Cor do Texto:</label>
+                        <input type="color" id="editor-font-color" value="#333333">
+                    </div>
+                </div>
+                <div id="mapa-conteudo-editor" class="editor-textarea" contenteditable="true" placeholder="Escreva seu resumo aqui... Use $x^2 + y^2 = r^2$ para fórmulas!"></div>
+                <button type="submit">Salvar Resumo</button>
+            </form>
+
+            <div id="categorias-mapas">
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #0288d1;">
+                        <h3>📐 Matemática (Específica)</h3>
+                    </div>
+                    <div id="lista-mapas-Matemática" class="lista-itens"></div>
+                </div>
+
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #3a86c8;">
+                        <h3>✍️ Língua Portuguesa</h3>
+                    </div>
+                    <div id="lista-mapas-Língua Portuguesa" class="lista-itens"></div>
+                </div>
+
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #24a0ed;">
+                        <h3>💻 Noções de Informática</h3>
+                    </div>
+                    <div id="lista-mapas-Noções de Informática" class="lista-itens"></div>
+                </div>
+
+                <div class="categoria-bloco">
+                    <div class="categoria-header" style="background-color: #e63946;">
+                        <h3>🏛️ Conhecimentos Locais (Caxias-MA)</h3>
+                    </div>
+                    <div id="lista-mapas-Conhecimentos Locais" class="lista-itens"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABA 4: CONTROLE DE PDFs -->
+        <section id="pdfs-leitura" class="tab-content">
+            <h2>📚 Controle Estruturado dos PDFs do Edital</h2>
+            <p>Gerenciamento integral dos arquivos para Caxias-MA.</p>
+
+            <div class="card-progresso-geral">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1rem;">
+                    <span>📊 Progresso Geral de Leitura do Edital</span>
+                    <span id="porcentagem-global-pdf">0%</span>
+                </div>
+                <div class="barra-progresso-container">
+                    <div class="barra-progresso-bg">
+                        <div id="barra-global-pdf-fill" class="barra-progresso-fill"></div>
+                    </div>
+                </div>
+                <div id="feedback-ritmo-leitura" class="feedback-ritmo-container"></div>
+            </div>
+
+            <div class="grade-disciplinas-pdf">
+                <div class="card-disciplina-mini" style="border-top-color: #0288d1;">
+                    <h4><span>📐 Matemática</span> <span id="porc-card-Matemática" style="font-weight: bold; color: #0288d1;">0%</span></h4>
+                    <p style="font-size: 0.8rem; color: #64748b;" id="cont-card-Matemática">0 de 0 lidos</p>
+                </div>
+                <div class="card-disciplina-mini" style="border-top-color: #3a86c8;">
+                    <h4><span>✍️ Português</span> <span id="porc-card-Portugues" style="font-weight: bold; color: #3a86c8;">0%</span></h4>
+                    <p style="font-size: 0.8rem; color: #64748b;" id="cont-card-Portugues">0 de 0 lidos</p>
+                </div>
+                <div class="card-disciplina-mini" style="border-top-color: #24a0ed;">
+                    <h4><span>💻 Informática</span> <span id="porc-card-Informatica" style="font-weight: bold; color: #24a0ed;">0%</span></h4>
+                    <p style="font-size: 0.8rem; color: #64748b;" id="cont-card-Informatica">0 de 0 lidos</p>
+                </div>
+                <div class="card-disciplina-mini" style="border-top-color: #e63946;">
+                    <h4><span>🏛️ Caxias-MA</span> <span id="porc-card-Locais" style="font-weight: bold; color: #e63946;">0%</span></h4>
+                    <p style="font-size: 0.8rem; color: #64748b;" id="cont-card-Locais">0 de 0 lidos</p>
+                </div>
+            </div>
+
+            <div class="layout-secao-pdfs">
+                <div>
+                    <div class="seletor-filtro-pdf">
+                        <label for="filtro-disciplina-pdf" style="font-weight: bold; font-size: 0.9rem; display: block; margin-bottom: 8px;">🔍 Filtrar por Disciplina:</label>
+                        <select id="filtro-disciplina-pdf" onchange="carregarPDFs()">
+                            <option value="TODOS">📁 Ver Todos os PDFs</option>
+                            <option value="Matemática">📐 Matemática (Específica)</option>
+                            <option value="Língua Portuguesa">✍️ Língua Portuguesa</option>
+                            <option value="Noções de Informática">💻 Noções de Informática</option>
+                            <option value="Conhecimentos Locais">🏛️ Conhecimentos Locais (Caxias-MA)</option>
+                        </select>
+                    </div>
+
+                    <div class="seletor-filtro-pdf">
+                        <h4 style="margin-bottom: 10px; font-size: 0.95rem;">➕ Adicionar PDF Adicional</h4>
+                        <form id="form-pdf" class="estilo-form">
+                            <select id="pdf-disciplina" required>
+                                <option value="Matemática">📐 Matemática (Específica)</option>
+                                <option value="Língua Portuguesa">✍️ Língua Portuguesa</option>
+                                <option value="Noções de Informática">💻 Noções de Informática</option>
+                                <option value="Conhecimentos Locais">🏛️ Conhecimentos Locais (Caxias-MA)</option>
+                            </select>
+                            <input type="text" id="pdf-titulo" placeholder="Nome do arquivo PDF" required>
+                            <button type="submit" style="padding: 8px; font-size: 0.9rem;">Inserir na Lista</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div>
+                    <div id="lista-pdfs" class="lista-itens" style="padding: 0;"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- CARREGAMENTO DOS SDKS DO FIREBASE -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
